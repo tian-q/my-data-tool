@@ -7,7 +7,7 @@ import {
 	useRef,
 } from "react";
 import { useStore } from "zustand";
-import type { StorageAdapter } from "../storage/StorageAdapter";
+import type { StorageAdapter } from "../shared/storage/StorageAdapter";
 import {
 	createTodoStore,
 	type TodoState,

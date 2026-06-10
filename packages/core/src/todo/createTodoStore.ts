@@ -1,6 +1,6 @@
 import { createStore } from "zustand/vanilla";
-import type { StorageAdapter } from "../storage/StorageAdapter";
-import type { Todo } from "../types";
+import type { StorageAdapter } from "../shared/storage/StorageAdapter";
+import type { Todo } from "./types";
 
 const STORAGE_KEY = "todos";
 
