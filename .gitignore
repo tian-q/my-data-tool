@@ -1,0 +1,14 @@
+node_modules
+dist
+.next
+out
+# Rust / Tauri 构建产物（很大，必须忽略）
+target
+src-tauri/target
+# env
+.env
+.env.local
+.env.*.local
+# misc
+.DS_Store
+*.log
