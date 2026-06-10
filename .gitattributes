@@ -1,0 +1,3 @@
+# Force LF line endings for all text files (cross-platform consistency).
+# Keeps husky shell hooks working on macOS/Linux.
+* text=auto eol=lf
