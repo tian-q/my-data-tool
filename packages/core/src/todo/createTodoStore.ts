@@ -1,6 +1,6 @@
 import { createStore } from "zustand/vanilla";
 import type { StorageAdapter } from "../shared/storage/StorageAdapter";
-import { type Todo, todosSchema } from "./types";
+import { type Todo, todoSchema } from "./types";
 
 const STORAGE_KEY = "todos";
 
@@ -35,12 +35,23 @@ export function createTodoStore(storage: StorageAdapter) {
 
 			load: async () => {
 				// Storage is an untrusted source: the file or localStorage value may be
-				// corrupt or written by an older version. Validate at runtime and fall
-				// back to an empty list instead of crashing on bad data.
+				// corrupt or written by an older version. Validate each item at runtime
+				// and keep the good ones instead of crashing or wiping everything when a
+				// single entry is bad.
 				try {
 					const raw = await storage.get<unknown>(STORAGE_KEY);
-					const parsed = todosSchema.safeParse(raw ?? []);
-					set({ todos: parsed.success ? parsed.data : [] });
+					const items = Array.isArray(raw) ? raw : [];
+					const valid: Todo[] = [];
+					for (const item of items) {
+						const result = todoSchema.safeParse(item);
+						if (result.success) valid.push(result.data);
+					}
+					if (valid.length < items.length) {
+						console.warn(
+							`Discarded ${items.length - valid.length} invalid todo(s) while loading.`,
+						);
+					}
+					set({ todos: valid });
 				} catch (err) {
 					console.error("Failed to load todos:", err);
 					set({ todos: [] });
