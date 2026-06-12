@@ -9,6 +9,11 @@ const host = process.env.TAURI_DEV_HOST;
 export default defineConfig(async () => ({
 	plugins: [react(), tailwindcss()],
 
+	// Force a single React copy. @app/core is consumed as raw source from the
+	// workspace and ships its own node_modules/react; without dedupe Vite bundles
+	// two React instances, causing "Invalid hook call" and a blank screen.
+	resolve: { dedupe: ["react", "react-dom"] },
+
 	// Vite options tailored for Tauri development and only applied in `tauri dev` or `tauri build`
 	//
 	// 1. prevent Vite from obscuring rust errors
