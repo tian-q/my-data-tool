@@ -10,7 +10,7 @@
 		"prepare": "husky"
 	},
 	"lint-staged": {
-		"*.{ts,tsx}": "biome check --write --no-errors-on-unmatched"
+		"*.{ts,tsx,css,mjs,json}": "biome check --write --no-errors-on-unmatched"
 	},
 	"pnpm": {
 		"overrides": {
