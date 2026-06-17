@@ -1,5 +1,5 @@
-import { TodoApp } from "@app/core";
+import { LandingPage } from "@/components/landing/LandingPage";
 
 export default function Home() {
-	return <TodoApp />;
+	return <LandingPage />;
 }

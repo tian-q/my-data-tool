@@ -2,6 +2,11 @@
 /* Let Tailwind scan @app/core's source so classes used there aren't purged. */
 @source "../../../../packages/core/src";
 
+html {
+	/* 始终为滚动条预留空间：登录弹窗切换 body overflow 时页面不会左右抖动（对齐 Vue style.css）。 */
+	scrollbar-gutter: stable;
+}
+
 :root {
 	--background: #ffffff;
 	--foreground: #171717;
