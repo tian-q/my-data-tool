@@ -1,6 +1,7 @@
 "use client";
 import { useState } from "react";
 import { bindWechatPhone, getMeApi } from "@/lib/api/auth";
+import { type CodeToast, toastApiError } from "@/lib/http/errorMessages";
 import type { ApiError } from "@/lib/http/types";
 import { toast } from "@/lib/toast";
 import { useAuth } from "@/store/auth/useAuth";
@@ -8,10 +9,27 @@ import { SmsCodeField } from "./fields/SmsCodeField";
 import { TextField } from "./fields/TextField";
 import {
 	type ApplyAuthResult,
-	PHONE_REGEX,
 	SubmitButton,
 	type WechatBindContext,
 } from "./shared";
+import { validatePhoneCode } from "./validation";
+
+// Pure-toast bind errors. Codes needing a side effect (1023 back-to-qr, 1024
+// merge dialog, 1026 silent refetch, 1028 disable wechat) stay explicit below.
+const BIND_ERRORS: Record<number, CodeToast> = {
+	1015: { type: "error", message: "验证码错误或已过期" },
+	1017: { type: "warning", message: "账号状态冲突,请稍后重试" },
+	1025: {
+		type: "error",
+		message: "该手机号已绑定其它微信,请使用对应微信扫码登录",
+	},
+	1031: { type: "error", message: "操作过于频繁,请稍后再试" },
+	1001: {
+		type: "error",
+		message: "参数错误,请检查输入",
+		preferServerMessage: true,
+	},
+};
 
 interface Props {
 	context: WechatBindContext;
@@ -51,14 +69,6 @@ export function WechatBindPhoneForm({
 
 	const handleBindError = async (error: ApiError) => {
 		const errCode = error?.code;
-		if (errCode === 1015) {
-			toast.error("验证码错误或已过期");
-			return;
-		}
-		if (errCode === 1017) {
-			toast.warning("账号状态冲突,请稍后重试");
-			return;
-		}
 		if (errCode === 1023) {
 			toast.error("本次扫码会话已过期,请重新扫码");
 			onBackToWechatQr();
@@ -73,10 +83,6 @@ export function WechatBindPhoneForm({
 				has_password: conflict.has_password ?? null,
 			});
 			setMergeVisible(true);
-			return;
-		}
-		if (errCode === 1025) {
-			toast.error("该手机号已绑定其它微信,请使用对应微信扫码登录");
 			return;
 		}
 		if (errCode === 1026) {
@@ -97,15 +103,7 @@ export function WechatBindPhoneForm({
 			toast.error("微信登录暂未开通");
 			return;
 		}
-		if (errCode === 1031) {
-			toast.error("操作过于频繁,请稍后再试");
-			return;
-		}
-		if (errCode === 1001) {
-			toast.error(error?.message || "参数错误,请检查输入");
-			return;
-		}
-		toast.error(error?.message || "微信绑定失败,请稍后重试");
+		toastApiError(error, BIND_ERRORS, "微信绑定失败,请稍后重试");
 	};
 
 	const onSubmit = async (e: React.FormEvent) => {
@@ -117,12 +115,9 @@ export function WechatBindPhoneForm({
 		}
 		const p = phone.trim();
 		const c = code.trim();
-		if (!PHONE_REGEX.test(p)) {
-			toast.warning("请输入正确的手机号");
-			return;
-		}
-		if (!/^\d{4,8}$/.test(c)) {
-			toast.warning("请输入 4-8 位验证码");
+		const invalid = validatePhoneCode(p, c);
+		if (invalid) {
+			toast.warning(invalid);
 			return;
 		}
 		setLoading(true);

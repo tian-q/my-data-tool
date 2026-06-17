@@ -2,11 +2,13 @@
 import { useState } from "react";
 import { z } from "zod";
 import { registerApi } from "@/lib/api/auth";
+import { type CodeToast, toastApiError } from "@/lib/http/errorMessages";
 import type { ApiError } from "@/lib/http/types";
 import { toast } from "@/lib/toast";
 import { SmsCodeField } from "./fields/SmsCodeField";
 import { TextField } from "./fields/TextField";
 import { type ApplyAuthResult, PHONE_REGEX, SubmitButton } from "./shared";
+import { phoneField, smsCodeField } from "./validation";
 
 interface Props {
 	loading: boolean;
@@ -14,9 +16,22 @@ interface Props {
 	applyAuthResult: ApplyAuthResult;
 }
 
+const REGISTER_ERRORS: Record<number, CodeToast> = {
+	1002: { type: "error", message: "该账号已被占用" },
+	1015: { type: "error", message: "验证码错误或已过期" },
+	1017: { type: "error", message: "该手机号已被注册" },
+	1020: { type: "error", message: "短信服务暂不可用,请稍后重试" },
+	1030: { type: "error", message: "注册过于频繁,请稍后再试" },
+	1001: {
+		type: "error",
+		message: "注册信息不合法,请检查输入",
+		preferServerMessage: true,
+	},
+};
+
 // Per the migration doc, register validation uses Zod (messages kept identical to
-// the Vue `validateRegister`). The password≠username cross-field rule is checked
-// separately after parsing (simpler than superRefine).
+// the Vue `validateRegister`). Phone/code reuse the shared field validators; the
+// password≠username cross-field rule is checked after parsing (simpler than superRefine).
 const registerSchema = z.object({
 	username: z
 		.string()
@@ -33,11 +48,8 @@ const registerSchema = z.object({
 			"密码必须同时包含字母和数字",
 		),
 	nickname: z.string().trim().max(50, "昵称最长 50 位"),
-	phone: z.string().trim().regex(PHONE_REGEX, "请输入正确的手机号"),
-	code: z
-		.string()
-		.trim()
-		.regex(/^\d{4,8}$/, "请输入 4-8 位验证码"),
+	phone: phoneField,
+	code: smsCodeField,
 });
 
 export function RegisterForm({ loading, setLoading, applyAuthResult }: Props) {
@@ -77,16 +89,7 @@ export function RegisterForm({ loading, setLoading, applyAuthResult }: Props) {
 			});
 			applyAuthResult(result, "注册成功");
 		} catch (err) {
-			const error = err as ApiError;
-			const errCode = error?.code;
-			if (errCode === 1002) toast.error("该账号已被占用");
-			else if (errCode === 1015) toast.error("验证码错误或已过期");
-			else if (errCode === 1017) toast.error("该手机号已被注册");
-			else if (errCode === 1020) toast.error("短信服务暂不可用,请稍后重试");
-			else if (errCode === 1030) toast.error("注册过于频繁,请稍后再试");
-			else if (errCode === 1001)
-				toast.error(error?.message || "注册信息不合法,请检查输入");
-			else toast.error(error?.message || "注册失败,请稍后重试");
+			toastApiError(err as ApiError, REGISTER_ERRORS, "注册失败,请稍后重试");
 		} finally {
 			setLoading(false);
 		}

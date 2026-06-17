@@ -1,18 +1,32 @@
 "use client";
 import { useState } from "react";
 import { resetPassword } from "@/lib/api/auth";
+import { type CodeToast, toastApiError } from "@/lib/http/errorMessages";
 import type { ApiError } from "@/lib/http/types";
 import { toast } from "@/lib/toast";
 import { useAuth } from "@/store/auth/useAuth";
 import { SmsCodeField } from "./fields/SmsCodeField";
 import { TextField } from "./fields/TextField";
-import { type LoginMode, PHONE_REGEX, SubmitButton } from "./shared";
+import { type LoginMode, SubmitButton } from "./shared";
+import { validateNewPassword, validatePhoneCode } from "./validation";
 
 interface Props {
 	loading: boolean;
 	setLoading: (v: boolean) => void;
 	setMode: (m: LoginMode) => void;
 }
+
+const RESET_ERRORS: Record<number, CodeToast> = {
+	1004: { type: "error", message: "账号已被禁用" },
+	1015: { type: "error", message: "验证码错误或已过期" },
+	1020: { type: "error", message: "短信服务暂不可用,请稍后重试" },
+	1031: { type: "error", message: "密码重置过于频繁,请稍后再试" },
+	1001: {
+		type: "error",
+		message: "参数错误,请检查输入",
+		preferServerMessage: true,
+	},
+};
 
 export function ResetPasswordForm({ loading, setLoading, setMode }: Props) {
 	const { clearAuth } = useAuth();
@@ -25,22 +39,9 @@ export function ResetPasswordForm({ loading, setLoading, setMode }: Props) {
 		if (loading) return;
 		const p = phone.trim();
 		const c = code.trim();
-		if (!PHONE_REGEX.test(p)) {
-			toast.warning("请输入正确的手机号");
-			return;
-		}
-		if (!/^\d{4,8}$/.test(c)) {
-			toast.warning("请输入 4-8 位验证码");
-			return;
-		}
-		if (
-			!newPassword ||
-			newPassword.length < 8 ||
-			newPassword.length > 32 ||
-			!/[A-Za-z]/.test(newPassword) ||
-			!/\d/.test(newPassword)
-		) {
-			toast.warning("新密码 8-32 位，需含字母和数字");
+		const invalid = validatePhoneCode(p, c) || validateNewPassword(newPassword);
+		if (invalid) {
+			toast.warning(invalid);
 			return;
 		}
 		setLoading(true);
@@ -52,15 +53,7 @@ export function ResetPasswordForm({ loading, setLoading, setMode }: Props) {
 			toast.success("密码已重置,请用新密码登录");
 			setMode("login-password");
 		} catch (err) {
-			const error = err as ApiError;
-			const errCode = error?.code;
-			if (errCode === 1004) toast.error("账号已被禁用");
-			else if (errCode === 1015) toast.error("验证码错误或已过期");
-			else if (errCode === 1020) toast.error("短信服务暂不可用,请稍后重试");
-			else if (errCode === 1031) toast.error("密码重置过于频繁,请稍后再试");
-			else if (errCode === 1001)
-				toast.error(error?.message || "参数错误,请检查输入");
-			else toast.error(error?.message || "密码重置失败,请稍后重试");
+			toastApiError(err as ApiError, RESET_ERRORS, "密码重置失败,请稍后重试");
 		} finally {
 			setLoading(false);
 		}

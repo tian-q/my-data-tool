@@ -1,6 +1,7 @@
 "use client";
 import { useState } from "react";
 import { loginApi } from "@/lib/api/auth";
+import { type CodeToast, toastApiError } from "@/lib/http/errorMessages";
 import type { ApiError } from "@/lib/http/types";
 import { toast } from "@/lib/toast";
 import { TextField } from "./fields/TextField";
@@ -19,6 +20,18 @@ interface Props {
 	wechatDisabled: boolean;
 	onEnterWechat: () => void;
 }
+
+const LOGIN_ERRORS: Record<number, CodeToast> = {
+	1003: { type: "error", message: "用户名或密码错误" },
+	1004: { type: "error", message: "账号已被禁用" },
+	1009: { type: "error", message: "账号已被锁定" },
+	1029: { type: "error", message: "登录失败次数过多,请稍后再试" },
+	1001: {
+		type: "error",
+		message: "参数错误,请检查输入",
+		preferServerMessage: true,
+	},
+};
 
 export function PasswordLoginForm({
 	loading,
@@ -50,17 +63,14 @@ export function PasswordLoginForm({
 			applyAuthResult(result, "登录成功");
 		} catch (err) {
 			const error = err as ApiError;
-			const code = error?.code;
-			if (code === 1003) toast.error("用户名或密码错误");
-			else if (code === 1004) toast.error("账号已被禁用");
-			else if (code === 1009) toast.error("账号已被锁定");
-			else if (code === 1019) {
+			// 1019: account has no password — switch to SMS login (a side effect,
+			// not just a toast), so it stays out of the code→toast map.
+			if (error?.code === 1019) {
 				toast.warning("该账号未设置密码,正在切换到短信登录");
 				setMode("login-sms");
-			} else if (code === 1029) toast.error("登录失败次数过多,请稍后再试");
-			else if (code === 1001)
-				toast.error(error?.message || "参数错误,请检查输入");
-			else toast.error(error?.message || "登录失败,请稍后重试");
+				return;
+			}
+			toastApiError(error, LOGIN_ERRORS, "登录失败,请稍后重试");
 		} finally {
 			setLoading(false);
 		}

@@ -1,4 +1,42 @@
+import { toast } from "../toast";
 import type { ApiError } from "./types";
+
+export type ToastType = "info" | "warning" | "error" | "success";
+
+/** A resolved toast for one error code (used by `toastApiError`). */
+export interface CodeToast {
+	type: ToastType;
+	message: string;
+	/**
+	 * Prefer the server-provided message, falling back to `message` — the Vue
+	 * `toast.x(err.message || "…")` pattern. Off by default (fixed copy).
+	 */
+	preferServerMessage?: boolean;
+}
+
+/**
+ * Toast an API error against a per-form code→toast map, falling back to the raw
+ * server message / a caller fallback (always an error toast). Replaces the
+ * hand-rolled `if (code === …) toast.…` chains in the auth forms — behaviour is
+ * identical to those chains (no generic-table lookup, no request-id, matching
+ * the originals). Codes needing a side effect (mode switch, dialog, refetch)
+ * stay handled explicitly in the form before calling this.
+ */
+export function toastApiError(
+	error: Pick<ApiError, "code" | "message"> | null | undefined,
+	handled: Record<number, CodeToast>,
+	fallback: string,
+): void {
+	const spec = error?.code != null ? handled[error.code] : undefined;
+	if (spec) {
+		const message = spec.preferServerMessage
+			? error?.message || spec.message
+			: spec.message;
+		toast[spec.type](message);
+		return;
+	}
+	toast.error(error?.message || fallback);
+}
 
 /**
  * Generic error code → Chinese fallback copy. Ported 1:1 from

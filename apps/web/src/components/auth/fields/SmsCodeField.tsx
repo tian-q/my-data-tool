@@ -2,10 +2,25 @@
 import { useState } from "react";
 import { useCooldown } from "@/hooks/useCooldown";
 import { sendSmsCode } from "@/lib/api/auth";
+import { type CodeToast, toastApiError } from "@/lib/http/errorMessages";
 import type { ApiError } from "@/lib/http/types";
 import { toast } from "@/lib/toast";
 import type { SmsScene } from "@/types/auth";
 import { PHONE_REGEX } from "../shared";
+
+const SEND_SMS_ERRORS: Record<number, CodeToast> = {
+	1016: {
+		type: "warning",
+		message: "验证码发送过于频繁,请稍后再试",
+		preferServerMessage: true,
+	},
+	1020: { type: "error", message: "短信服务暂不可用,请稍后重试" },
+	1001: {
+		type: "warning",
+		message: "手机号或场景参数错误",
+		preferServerMessage: true,
+	},
+};
 
 // Verification-code input + send button. Owns the send request, the 60s cooldown
 // and the send-error toasts (Vue `handleSendCode` / `handleSmsSendError`).
@@ -48,17 +63,7 @@ export function SmsCodeField({
 			toast.success("验证码已发送");
 			cooldown.start(60);
 		} catch (err) {
-			const error = err as ApiError;
-			const code = error?.code;
-			if (code === 1016) {
-				toast.warning(error?.message || "验证码发送过于频繁,请稍后再试");
-			} else if (code === 1020) {
-				toast.error("短信服务暂不可用,请稍后重试");
-			} else if (code === 1001) {
-				toast.warning(error?.message || "手机号或场景参数错误");
-			} else {
-				toast.error(error?.message || "验证码发送失败");
-			}
+			toastApiError(err as ApiError, SEND_SMS_ERRORS, "验证码发送失败");
 		} finally {
 			setSending(false);
 		}
