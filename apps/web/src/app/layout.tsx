@@ -28,7 +28,7 @@ export default function RootLayout({
 }>) {
 	return (
 		<html
-			lang="en"
+			lang="zh-CN"
 			className={`${geistSans.variable} ${geistMono.variable} h-full antialiased`}
 			// Browser extensions (e.g. the Google Analytics opt-out add-on) inject
 			// attributes onto <html> before React hydrates, causing a mismatch.

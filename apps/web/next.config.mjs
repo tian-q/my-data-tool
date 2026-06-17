@@ -4,8 +4,7 @@ import "./env.mjs"; // run env validation at config load (see env.mjs)
 // `server.proxy['/api']`. Defaults to the live auth host; override per-machine
 // with `API_PROXY_TARGET` in `.env.local`. (The Vue `/ws` proxy is workbench-only
 // and intentionally omitted here — add it when the workbench is migrated.)
-const apiProxyTarget =
-	process.env.API_PROXY_TARGET || "http://124.174.77.199";
+const apiProxyTarget = process.env.API_PROXY_TARGET || "http://124.174.77.199";
 
 /** @type {import('next').NextConfig} */
 const nextConfig = {
